@@ -32,23 +32,13 @@ bool lupcap_read(pcap_t * handle, struct pcap_pkthdr * header, unsigned int &dat
     bool ret = 1;
     struct pcap_pkthdr * header_;
     const u_char * temp;
-    printf("111111111111\n");
-    while(1){
-        printf("22222222222\n");
-        int res = pcap_next_ex(handle, &header_, &temp);
-        printf("33333333333\n");
-        if(res == -1 || res == -2){
-            ret = 0;
-            break;
-        }
-        if(res == 0){
-            continue;
-        }
+    int res = pcap_next_ex(handle, &header_, &temp);
+    if(res == -1 || res == -2){
+        return 0;
     }
-    printf("im hear~~~\n");
+
     memcpy(data, temp, sizeof(temp));
     data_length = header_->caplen;
-    printf("data >> %s\n", data);
     printf("[+] pcap next_ex success\n");
     return ret;
 }

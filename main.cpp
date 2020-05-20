@@ -77,8 +77,10 @@ int main(){
             char errbuf[PCAP_ERRBUF_SIZE];
             handle = pcap_open_live(dev, BUFSIZ, 1, 1000, errbuf);
             if(handle == NULL){
+                ret_check = 0;
                 printf("[-] pcap handle failed\n");
             }else{
+                ret_check = 1;
                 printf("[+] pcap handle success\n");
             }
         }
@@ -91,6 +93,7 @@ int main(){
         }
         if(memcmp(type, "\x11\x14", sizeof(type)) == 0){
             ret_check = lupcap_read(handle, header, data_length, save_data);
+            
         }
         if(memcmp(type, "\x11\x15", sizeof(type)) == 0){
             //ret_check = lupcap_write(handle, data_length, save_data);
@@ -101,8 +104,11 @@ int main(){
             data[sizeof(type)] = '\x00';
         }else{
             data[sizeof(type)] = '\x01';
-            if(strcmp(type, "\x11\x14") == 0 || strcmp(type, "\x11\x13") == 0){
+            printf("check check\n");
+            if(memcmp(type, "\x11\x14", sizeof(type)) == 0 || memcmp(type, "\x11\x13", sizeof(type)) == 0){
                 memcpy(data+sizeof(type)+1, save_data, sizeof(save_data));
+                printf("success >> %X\n", data[2]);
+                printf("data >> %X:%X:%X:%X:%X:%X\n", data[3],data[4],data[5],data[6],data[7],data[8]);
             }
         }
         send(client_fd, data, SEND_SIZE, 0);
