@@ -1,19 +1,5 @@
 #include "lupcapd.h"
 
-bool lupcap_open(pcap_t * handle, char * dev){
-    char errbuf[PCAP_ERRBUF_SIZE];
-    bool ret = 1;
-    handle = pcap_open_live(dev, BUFSIZ, 1, 1000, errbuf);
-    printf("handle 1 >> %s\n", handle);
-    if(handle == NULL){
-        ret = 0;
-    }else{
-        printf("[+] pcap handle success\n");
-    }
-    
-    return ret;
-}
-
 bool lupcap_close(pcap_t * handle){
     if(handle == NULL){
         return 0;
@@ -24,28 +10,47 @@ bool lupcap_close(pcap_t * handle){
     }
 }
 
-// bool lupcap_findalldevs(){
+bool lupcap_findalldevs(uint16_t *data_length, uint8_t * data){
+    pcap_if_t * alldevs;
+    pcap_if_t * temp;
+    char errbuf[PCAP_ERRBUF_SIZE];
+    
+    if(pcap_findalldevs(&alldevs, errbuf) == -1){
+        printf("[-] pcap_findalldevs failed\n");
+        return false;
+    }
+    int i = 0;
+    for(temp = alldevs; temp; temp=temp->next){
+        strcat((char *)data, temp->name);
+        strcat((char *)data, "+");
+    }
+    printf("[+] pcap_findalldevs success\n");
+    *data_length = sizeof(*data);
+    return true;
+}
 
-// }
-
-bool lupcap_read(pcap_t * handle, struct pcap_pkthdr * header, unsigned int &data_length, uint8_t * data){
+bool lupcap_read(pcap_t * handle, uint16_t *data_length, uint8_t * data){
     bool ret = 1;
-    struct pcap_pkthdr * header_;
+    struct pcap_pkthdr * header;
     const u_char * temp;
-    int res = pcap_next_ex(handle, &header_, &temp);
+    int res = pcap_next_ex(handle, &header, &temp);
     if(res == -1 || res == -2){
+        printf("[-] pcap next_ex failed\n");
         return 0;
     }
-
-    memcpy(data, temp, sizeof(temp));
-    data_length = header_->caplen;
+    memcpy(data, temp, header->caplen);
+    *data_length = header->caplen;
     printf("[+] pcap next_ex success\n");
+    
     return ret;
 }
 
-bool lupcap_write(pcap_t * handle, unsigned int * data_length, uint8_t * data){
-    if(pcap_sendpacket(handle, data, *data_length) != 0){
+bool lupcap_write(pcap_t * handle, uint8_t * data){
+    uint16_t send_len = *data;
+    if(pcap_sendpacket(handle, data, send_len) != 0){
+        printf("[-] pcap_sendpacket failed\n");
         return false;
     }
+    printf("[+] pcap_sendpacket success\n");
     return true;
 }

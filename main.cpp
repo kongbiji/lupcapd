@@ -19,7 +19,7 @@ int main(){
     struct sockaddr_in client_addr;
     int len;
     char type[2];
-    unsigned int data_length;
+    uint16_t data_length;
     uint8_t data[SEND_SIZE];
     uint8_t save_data[SEND_SIZE];
     uint8_t recv_data[SEND_SIZE] ={0,};
@@ -63,17 +63,17 @@ int main(){
         printf("[+] waiting...\n");
         memset(recv_data, 0, sizeof(recv_data));
         memset(data, 0, sizeof(data));
+        memset(save_data, 0, sizeof(save_data));
+
         if(recv(client_fd, recv_data, sizeof(recv_data), 0) == -1){
             printf("[-] recv failed\n");
             continue;
         }
-        printf("recv data >> %x\n",recv_data);
         memcpy(type, recv_data, sizeof(type));
         
-        printf("type >> %X%X\n",type[0],type[1]);
         if(memcmp(type, "\x11\x11", sizeof(type)) == 0){
-            strcpy(dev, "wlan0");
-            // ret_check = lupcap_open(handle, dev);
+            uint16_t recv_len = *(recv_data + 2);
+            memcpy(dev, recv_data+4, recv_len);
             char errbuf[PCAP_ERRBUF_SIZE];
             handle = pcap_open_live(dev, BUFSIZ, 1, 1000, errbuf);
             if(handle == NULL){
@@ -89,26 +89,23 @@ int main(){
             break;
         }
         if(memcmp(type, "\x11\x13", sizeof(type)) == 0){
-            //ret_check = lupcap_findalldevs();
+            ret_check = lupcap_findalldevs(&data_length, save_data);
         }
         if(memcmp(type, "\x11\x14", sizeof(type)) == 0){
-            ret_check = lupcap_read(handle, header, data_length, save_data);
-            
+            ret_check = lupcap_read(handle, &data_length, save_data);
         }
         if(memcmp(type, "\x11\x15", sizeof(type)) == 0){
-            //ret_check = lupcap_write(handle, data_length, save_data);
+            ret_check = lupcap_write(handle, recv_data+2);
         }
-        // TODO: send data to client
+
         memcpy(data, type, sizeof(type));
         if(ret_check == 0){
             data[sizeof(type)] = '\x00';
         }else{
             data[sizeof(type)] = '\x01';
-            printf("check check\n");
             if(memcmp(type, "\x11\x14", sizeof(type)) == 0 || memcmp(type, "\x11\x13", sizeof(type)) == 0){
-                memcpy(data+sizeof(type)+1, save_data, sizeof(save_data));
-                printf("success >> %X\n", data[2]);
-                printf("data >> %X:%X:%X:%X:%X:%X\n", data[3],data[4],data[5],data[6],data[7],data[8]);
+                memcpy(data+sizeof(type)+1, &data_length, 2);
+                memcpy(data+sizeof(type)+3, save_data, sizeof(save_data));
             }
         }
         send(client_fd, data, SEND_SIZE, 0);
