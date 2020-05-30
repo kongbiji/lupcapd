@@ -4,21 +4,18 @@
 #include <string.h>
 #include <stdlib.h>
 
-typedef struct{
-    uint16_t data_length;
-    lupcap_data data;
-}socket_data;
-
+#pragma pack(push, 1)
 typedef struct{
     uint16_t type;
-    uint8_t ret;
-    uint16_t data_length;
+    uint8_t ret = 0x00;
+    uint16_t data_length = 0x0000;
 }lupcap_header;
 
 typedef struct{
     lupcap_header header;
-    uint8_t body[1460]; 
+    uint8_t body[1460] = {0,};
 }lupcap_data;
+#pragma pack(pop)
 
 bool lupcap_close(pcap_t * handle);
 bool lupcap_findalldevs(uint16_t *data_length, uint8_t * data);

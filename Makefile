@@ -3,7 +3,7 @@ TARGET=lupcapd
 OBJS=main.o lupcapd.o
 #CXXFLAGS+=-I../../android/sysroot/include
 #LDFLAGS+=-L../../android/sysroot/lib
-LDLIBS+=-lpcap
+LDLIBS+=-lpcap -lpthread
 
 all: $(TARGET)
 
