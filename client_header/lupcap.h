@@ -39,7 +39,7 @@ bool lupcap_connect(struct sockaddr_in *server_addr, int *server_fd){
     return true;
 }
 
-bool lupcap_open(int *server_fd, uint8_t * buf, char * dev){
+bool lupcap_open(int *server_fd, uint8_t *datalink_type, char * dev){
     lupcap_data *l_data = (lupcap_data *)malloc(sizeof(lupcap_data));
 
     l_data->header.type = OPEN;
@@ -58,64 +58,74 @@ bool lupcap_open(int *server_fd, uint8_t * buf, char * dev){
     }
     if(l_data->header.ret == 0x00){
         return false;
-        //memcpy(buf, temp+4, sizeof(temp)-4);
+    }
+    *datalink_type = *l_data->body; // 1==eth, 127==802.11
+
+    return true;
+}
+
+bool lupcap_close(int *server_fd{
+    lupcap_data *l_data = (lupcap_data *)malloc(sizeof(lupcap_data));
+
+    l_data->header.type = 0x1112;
+    l_data->header.ret = 0x01;
+    l_data->header.data_length = 0x0000;
+
+    if(send(*server_fd, l_data, sizeof(lupcap_data), 0) < 0){
+        return false;
+    }
+    memset(l_data, 0, sizeof(l_data));
+    if(recv(*server_fd, l_data, sizeof(lupcap_data), 0) < 0){
+        return false;
+    }
+    if(l_data->header.ret == 0x00){
+        return false;
     }
     return true;
 }
 
-bool lupcap_close(int *server_fd, uint8_t * buf){
+bool lupcap_findalldevs(int *server_fd, lupcap_data *l_data){
+    //lupcap_data *l_data = (lupcap_data *)malloc(sizeof(lupcap_data));
     char temp[1460] = {0,};
-    uint8_t type[2];
-    memcpy(type, "\x11\x12", sizeof(type));
+    l_data->header.type = 0x1113;
+    l_data->header.ret = 0x01;
+    l_data->header.data_length = 0;
 
-    if(send(*server_fd, type, sizeof(type), 0) < 0){
+    if(send(*server_fd, l_data, sizeof(lupcap_data), 0) < 0){
         return false;
     }
-    if(recv(*server_fd, temp, sizeof(temp), 0) < 0){
+    memset(l_data, 0, sizeof(l_data));
+    if(recv(*server_fd, l_data, sizeof(lupcap_data), 0) < 0){
         return false;
     }
-    if(temp[2] == '\x01'){
-        memcpy(buf, temp+4, sizeof(temp)-4);
-    }
-    
-    return true;
-}
-
-bool lupcap_findalldevs(int *server_fd, uint8_t * buf){
-    char temp[1460] = {0,};
-    uint8_t type[2];
-    memcpy(type, "\x11\x13", sizeof(type));
-
-    if(send(*server_fd, type, sizeof(type), 0) < 0){
-        return false;
-    }
-    if(recv(*server_fd, temp, sizeof(temp), 0) < 0){
-        return false;
-    }
-    if(temp[2] == '\x01'){
-        memcpy(buf, temp+5, sizeof(temp)-5);
-        printf("check >> %s\n", buf);
-        char *ptr = strtok((char *)buf, "+");
+    if(l_data->header.ret == 0x01){
+        printf("check >> %s\n", l_data->body);
+        char *ptr = strtok((char *)l_data->body, "+");
+        int i = 1;
         while (ptr != NULL){
+            printf("%d: %s\n", ptr);
             ptr = strtok(NULL, "+");
+            i++;
         }
     }
     return true;
 }
 
-int lupcap_read(int *server_fd, uint8_t * buf){
-    uint8_t temp[1460] = {0,};
-    uint8_t type[2];
-    memcpy(type, "\x11\x14", sizeof(type));
+int lupcap_read(int *server_fd, lupcap_data *l_data){
+    //lupcap_data *l_data = (lupcap_data *)malloc(sizeof(lupcap_data));
 
-    if(send(*server_fd, type, sizeof(type), 0) < 0){
+    l_data->header.type = 0x1114;
+    l_data->header.ret = 0x01;
+    l_data->header.data_length = 0x0000;
+
+    if(send(*server_fd, l_data, sizeof(lupcap_data), 0) < 0){
         return false;
     }
-    if(recv(*server_fd, temp, sizeof(temp), 0) < 0){
+    memset(l_data, 0, sizeof(l_data));
+    if(recv(*server_fd, l_data, sizeof(lupcap_data), 0) < 0){
         return false;
     }
-    if(temp[2] == '\x01'){
-        memcpy(buf, temp+5, sizeof(temp)-5);
+    if(l_data->header.ret == 0x01){
         return true;
     }else{
         return false;
@@ -123,18 +133,20 @@ int lupcap_read(int *server_fd, uint8_t * buf){
     
 }
 
-int lupcap_write(int *server_fd, uint8_t * buf){
-    char temp[1460] = {0,};
-    uint8_t type[2];
-    memcpy(type, "\x11\x15", sizeof(type));
-    if(send(*server_fd, type, sizeof(type), 0) < 0){
+int lupcap_write(int *server_fd, lupcap_data *l_data){
+
+    l_data->header.type = 0x1114;
+    l_data->header.ret = 0x01;
+
+    if(send(*server_fd, l_data, sizeof(lupcap_data), 0) < 0){
         return false;
     }
-    if(recv(*server_fd, temp, sizeof(temp), 0) < 0){
+    memset(l_data, 0, sizeof(l_data));
+    if(recv(*server_fd, l_data, sizeof(lupcap_data), 0) < 0){
         return false;
     }
-    if(temp[2] == '\x01'){
-        memcpy(buf, temp+3, sizeof(temp)-3);
+    if(l_data->header.ret == 0x00){
+        return false;
     }
     return true;    
 }
