@@ -36,10 +36,7 @@ void client_thread(int client_fd){
 
     lupcap_data * l_data = (lupcap_data *)malloc(sizeof(lupcap_data));
     lupcap_data * l_data_send = (lupcap_data *)malloc(sizeof(lupcap_data));
-
-    uint16_t data_length = 0;
-    uint8_t data[BUFSIZE];
-    uint8_t save_data[BUFSIZE];
+    
     char dev[10] = {0,};
     
     while(1){
@@ -70,6 +67,7 @@ void client_thread(int client_fd){
                     printf("[-] pcap handle failed\n");
                 }else{
                     l_data_send->header.ret = 0x01;
+                    l_data_send->header.data_length = 0x0000;
                     printf("[+] pcap handle success\n");
                 }
                 break;
@@ -87,7 +85,6 @@ void client_thread(int client_fd){
                 break;
             }
             case WRITE:{
-                data_length = l_data->header.data_length;
                 lupcap_write(handle, l_data);
                 break;
             }

@@ -22,7 +22,7 @@ void lupcap_findalldevs(lupcap_data * data){
         strcat((char *)data, "+");
     }
     printf("[+] pcap_findalldevs success\n");
-    data->header.data_length = sizeof(*data);
+    data->header.data_length = strlen((char *)data->body);
 }
 
 void lupcap_read(pcap_t * handle, lupcap_data * data){
@@ -34,7 +34,7 @@ void lupcap_read(pcap_t * handle, lupcap_data * data){
         printf("[-] pcap next_ex failed\n");
     }
     memcpy(data->body, temp, sizeof(temp));
-    data->header.data_length = strlen(data->body);
+    data->header.data_length = strlen((char *)data->body);
     printf("[+] pcap next_ex success\n");
 }
 
