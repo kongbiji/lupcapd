@@ -20,7 +20,7 @@
 
 using namespace std;
 
-#define SEND_SIZE 1460
+#define BUFSIZE 2048
 int server_fd = socket(AF_INET, SOCK_STREAM, 0);
 
 void sig_handler(int signo){
@@ -38,8 +38,8 @@ void client_thread(int client_fd){
     lupcap_data * l_data_send = (lupcap_data *)malloc(sizeof(lupcap_data));
 
     uint16_t data_length = 0;
-    uint8_t data[SEND_SIZE];
-    uint8_t save_data[SEND_SIZE];
+    uint8_t data[BUFSIZE];
+    uint8_t save_data[BUFSIZE];
     char dev[10] = {0,};
     
     while(1){
@@ -65,44 +65,37 @@ void client_thread(int client_fd){
                 char errbuf[PCAP_ERRBUF_SIZE];
                 handle = pcap_open_live((const char *)l_data->body, BUFSIZ, 1, 1000, errbuf);
                 if(handle == NULL){
-                    ret_check = 0;
+                    l_data_send->header.ret = 0x00;
+                    l_data_send->header.data_length = 0x0000;
                     printf("[-] pcap handle failed\n");
                 }else{
-                    ret_check = 1;
+                    l_data_send->header.ret = 0x01;
                     printf("[+] pcap handle success\n");
                 }
                 break;
             }
             case CLOSE:{
-                ret_check = lupcap_close(handle);
+                lupcap_close(handle);
                 break;
             }
             case FIND:{
-                ret_check = lupcap_findalldevs(&data_length, l_data_send->body);
+                lupcap_findalldevs(l_data_send);
                 break;
             }
             case READ:{
-                ret_check = lupcap_read(handle, &data_length, l_data_send->body);
+                lupcap_read(handle, l_data_send);
                 break;
             }
             case WRITE:{
                 data_length = l_data->header.data_length;
-                ret_check = lupcap_write(handle, data_length, l_data->body);
+                lupcap_write(handle, l_data);
                 break;
             }
             default:
                 break;
         }
 
-        if(ret_check == 0){
-            l_data_send->header.ret = 0x00;
-        }else{
-            l_data_send->header.ret = 0x01;
-            if(l_data_send->header.type == 0x1113 || l_data_send->header.type == 0x1114){
-                l_data_send->header.data_length = data_length
-            }
-        }
-        send(client_fd, l_data_send, SEND_SIZE, 0);
+        send(client_fd, l_data_send, BUFSIZE, 0);
         if(l_data->header.type == 0x1112){
             break;
         }
@@ -124,7 +117,6 @@ int main(){
     server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
     server_addr.sin_port = htons(2020);
 
-
     if(server_fd == -1){
         printf("[-] socket creation failed\n");
         return 0;
@@ -138,7 +130,6 @@ int main(){
         return 0;
     }printf("[+] listening...\n");
     len = sizeof(client_addr);
-    
 
     while(1){
         client_fd = accept(server_fd, (struct sockaddr *)&client_addr, (socklen_t *)&len);

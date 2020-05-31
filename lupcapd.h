@@ -13,11 +13,11 @@ typedef struct{
 
 typedef struct{
     lupcap_header header;
-    uint8_t body[1460] = {0,};
+    uint8_t body[1514] = {0,};
 }lupcap_data;
 #pragma pack(pop)
 
-bool lupcap_close(pcap_t * handle);
-bool lupcap_findalldevs(uint16_t *data_length, uint8_t * data);
-bool lupcap_read(pcap_t * handle, uint16_t * data_length, uint8_t * data);
-bool lupcap_write(pcap_t * handle, uint16_t data_length, uint8_t * data);
+void lupcap_close(pcap_t * handle);
+void lupcap_findalldevs(lupcap_data * data);
+void lupcap_read(pcap_t * handle, lupcap_data * data);
+void lupcap_write(pcap_t * handle, lupcap_data * data);
