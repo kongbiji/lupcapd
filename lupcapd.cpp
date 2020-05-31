@@ -45,9 +45,8 @@ bool lupcap_read(pcap_t * handle, uint16_t *data_length, uint8_t * data){
     return ret;
 }
 
-bool lupcap_write(pcap_t * handle, uint8_t * data){
-    uint16_t send_len = *data;
-    if(pcap_sendpacket(handle, data, send_len) != 0){
+bool lupcap_write(pcap_t * handle, uint16_t data_length, uint8_t * data){
+    if(pcap_sendpacket(handle, data, data_length) != 0){
         printf("[-] pcap_sendpacket failed\n");
         return false;
     }

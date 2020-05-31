@@ -35,27 +35,26 @@ void client_thread(int client_fd){
     const unsigned char * rep;
 
     lupcap_data * l_data = (lupcap_data *)malloc(sizeof(lupcap_data));
+    lupcap_data * l_data_send = (lupcap_data *)malloc(sizeof(lupcap_data));
 
-    char type[2];
-    uint16_t data_length;
+    uint16_t data_length = 0;
     uint8_t data[SEND_SIZE];
     uint8_t save_data[SEND_SIZE];
-    uint8_t recv_data[SEND_SIZE] ={0,};
     char dev[10] = {0,};
     
     while(1){
         printf("[+] waiting...\n");
-        memset(recv_data, 0, sizeof(recv_data));
-        memset(data, 0, sizeof(data));
-        memset(save_data, 0, sizeof(save_data));
+        memset(l_data, 0, sizeof(lupcap_data));
+        memset(l_data, 0, sizeof(lupcap_data));
 
-        if(recv(client_fd, l_data, sizeof(recv_data), 0) == -1){
+        if(recv(client_fd, l_data, sizeof(lupcap_data), 0) == -1){
             printf("[-] recv failed\n");
             continue;
         }
-        //memcpy(type, recv_data, sizeof(type));
         printf("type >> %04X\n", l_data->header.type);
         printf("ret >> %02X\n", l_data->header.ret);
+
+        l_data_send->header.type = l_data->header.type;
         
         switch(l_data->header.type){
             case OPEN:{
@@ -74,58 +73,37 @@ void client_thread(int client_fd){
                 }
                 break;
             }
-            case CLOSE:
+            case CLOSE:{
                 ret_check = lupcap_close(handle);
                 break;
-            case FIND:
+            }
+            case FIND:{
+                ret_check = lupcap_findalldevs(&data_length, l_data_send->body);
                 break;
-            case READ:
+            }
+            case READ:{
+                ret_check = lupcap_read(handle, &data_length, l_data_send->body);
                 break;
-            case WRITE:
+            }
+            case WRITE:{
+                data_length = l_data->header.data_length;
+                ret_check = lupcap_write(handle, data_length, l_data->body);
                 break;
+            }
             default:
                 break;
         }
 
-        // if(l_data->header.type == 0x1111){
-        //     uint16_t recv_len = *(recv_data + 2);
-        //     memcpy(dev, recv_data+4, recv_len);
-        //     char errbuf[PCAP_ERRBUF_SIZE];
-        //     handle = pcap_open_live(dev, BUFSIZ, 1, 1000, errbuf);
-        //     if(handle == NULL){
-        //         ret_check = 0;
-        //         printf("[-] pcap handle failed\n");
-        //     }else{
-        //         ret_check = 1;
-        //         printf("[+] pcap handle success\n");
-        //     }
-        // }
-        // if(memcmp(type, "\x11\x12", sizeof(type)) == 0){
-        //     ret_check = lupcap_close(handle);
-        //     break;
-        // }
-        if(memcmp(type, "\x11\x13", sizeof(type)) == 0){
-            ret_check = lupcap_findalldevs(&data_length, save_data);
-        }
-        if(memcmp(type, "\x11\x14", sizeof(type)) == 0){
-            ret_check = lupcap_read(handle, &data_length, save_data);
-        }
-        if(memcmp(type, "\x11\x15", sizeof(type)) == 0){
-            ret_check = lupcap_write(handle, recv_data+2);
-        }
-
-        memcpy(data, type, sizeof(type));
         if(ret_check == 0){
-            data[sizeof(type)] = '\x00';
+            l_data_send->header.ret = 0x00;
         }else{
-            data[sizeof(type)] = '\x01';
-            if(memcmp(type, "\x11\x14", sizeof(type)) == 0 || memcmp(type, "\x11\x13", sizeof(type)) == 0){
-                memcpy(data+sizeof(type)+1, &data_length, 2);
-                memcpy(data+sizeof(type)+3, save_data, sizeof(save_data));
+            l_data_send->header.ret = 0x01;
+            if(l_data_send->header.type == 0x1113 || l_data_send->header.type == 0x1114){
+                l_data_send->header.data_length = data_length
             }
         }
-        send(client_fd, data, SEND_SIZE, 0);
-        if(memcmp(type, "\x11\x12", sizeof(type)) == 0){
+        send(client_fd, l_data_send, SEND_SIZE, 0);
+        if(l_data->header.type == 0x1112){
             break;
         }
    }
