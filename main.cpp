@@ -36,31 +36,31 @@ void client_thread(int client_fd){
 
     lupcap_data * l_data = (lupcap_data *)malloc(sizeof(lupcap_data));
     lupcap_data * l_data_send = (lupcap_data *)malloc(sizeof(lupcap_data));
-    
+
     char dev[10] = {0,};
     
     while(1){
         printf("[+] waiting...\n");
         memset(l_data, 0, sizeof(lupcap_data));
-        memset(l_data, 0, sizeof(lupcap_data));
+        memset(l_data_send, 0, sizeof(lupcap_data));
 
         if(recv(client_fd, l_data, sizeof(lupcap_data), 0) == -1){
             printf("[-] recv failed\n");
             continue;
         }
-        printf("type >> %04X\n", l_data->header.type);
-        printf("ret >> %02X\n", l_data->header.ret);
 
         l_data_send->header.type = l_data->header.type;
         
-        switch(l_data->header.type){
+        switch(ntohs(l_data->header.type)){
             case OPEN:{
-                printf("all data >> %s\n", l_data);
-                printf("len >> %d\n", l_data->header.data_length);
-                printf("dev >> %s\n", l_data->body);
-                uint16_t recv_len = l_data->header.data_length;
+                printf("=====lupcap_open=====\n");
+                printf("recv dev len >> %d\n", l_data->header.data_length);
+                printf("recv dev >> %s\n", l_data->body);
+                char * dev = (char *)malloc(ntohs(l_data->header.data_length));
+                memcpy(dev, l_data->body, l_data->header.data_length);
+                printf("save dev >> %s\n", dev);
                 char errbuf[PCAP_ERRBUF_SIZE];
-                handle = pcap_open_live((const char *)l_data->body, BUFSIZ, 1, 1000, errbuf);
+                handle = pcap_open_live(dev, BUFSIZ, 1, 1000, errbuf);
                 if(handle == NULL){
                     l_data_send->header.ret = 0x00;
                     l_data_send->header.data_length = 0x0000;
@@ -91,9 +91,11 @@ void client_thread(int client_fd){
             default:
                 break;
         }
-
+        printf("send type >> %04X\n", l_data_send->header.type);
+        printf("send ret >> %02X\n", l_data_send->header.ret);
+        printf("send data >> %s\n", l_data_send->body);
         send(client_fd, l_data_send, BUFSIZE, 0);
-        if(l_data->header.type == 0x1112){
+        if(ntohs(l_data->header.type) == CLOSE){
             break;
         }
    }
